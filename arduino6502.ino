@@ -1,7 +1,33 @@
 #include "definitions.h"
 #include "rom.h"
 
+#include <Adafruit_GFX.h>    // Core graphics library
+#include "SWTFT.h" // Hardware-specific library
 
+
+#define DO_DEBUG
+
+
+#ifdef DO_DEBUG
+#define DEBUG_INIT()   Serial.begin(9600)
+#define DEBUG_PRINT  Serial.print
+#define DEBUG_PRINTLN  Serial.println
+#else
+#define DEBUG_INIT()
+#define DEBUG_PRINT(...)  
+#endif
+
+#define	BLACK   0x0000
+#define	BLUE    0x001F
+#define	RED     0xF800
+#define	GREEN   0x07E0
+#define CYAN    0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW  0xFFE0
+#define WHITE   0xFFFF
+
+
+SWTFT tft;
 
 #define DEBUG(msg,...) 
 #define ADDRL PORTC
@@ -103,8 +129,8 @@ unsigned char fetch_addr(taddress _address){
     } else if (_address == UART_CTRL){
       return 0;	
     } else if (_address >= EXTRAM_ADDR){
-      Serial.print("********** FETCH HIRAM ");
-      Serial.println(_address.w,HEX);
+      DEBUG_PRINT("********** FETCH HIRAM ");
+      DEBUG_PRINTLN(_address.w,HEX);
       return 0;//DATA;
     }
     return loram[_address.w];
@@ -113,15 +139,16 @@ unsigned char fetch_addr(taddress _address){
 void store_at(unsigned char value, taddress _address){
     set_write();
     if (_address == UART_DATA){
-      Serial.print((char)value);
+      //Serial.print((char)value);
+      tft.print((char)value);
     } else if (_address == UART_CTRL){
     } else if (_address == UART_CMD){
     } else if (_address == UART_STATUS){
     } else if (_address < EXTRAM_ADDR){
       loram[_address] = value;
     } else if (_address < ROM_ADDR){
-      Serial.print("********** STORE HIRAM ");
-      Serial.println(_address.w,HEX);
+      DEBUG_PRINT("********** STORE HIRAM ");
+      DEBUG_PRINTLN(_address.w,HEX);
     }
 }
 
@@ -812,20 +839,20 @@ void reset(){
 }
 
 void do_dump(){
-  Serial.print("A:");Serial.print(a,HEX);
-  Serial.print(",X:");Serial.print(x,HEX);
-  Serial.print(",Y:");Serial.print(y,HEX);
-  Serial.print(",P:");
+  DEBUG_PRINT("A:");DEBUG_PRINT(a,HEX);
+  DEBUG_PRINT(",X:");DEBUG_PRINT(x,HEX);
+  DEBUG_PRINT(",Y:");DEBUG_PRINT(y,HEX);
+  DEBUG_PRINT(",P:");
   
-  Serial.print(p & FLAG_N ? "N": "-");
-  Serial.print("-");
-  Serial.print(p & FLAG_V ? "V": "-");
-  Serial.print(p & FLAG_B ? "B": "-");
-  Serial.print(p & FLAG_D ? "D": "-");
-  Serial.print(p & FLAG_I ? "I": "-");
-  Serial.print(p & FLAG_Z ? "Z": "-");
-  Serial.print(p & FLAG_C ? "C": "-");
-  Serial.print(",S:");Serial.println(s,HEX);
+  DEBUG_PRINT(p & FLAG_N ? "N": "-");
+  DEBUG_PRINT("-");
+  DEBUG_PRINT(p & FLAG_V ? "V": "-");
+  DEBUG_PRINT(p & FLAG_B ? "B": "-");
+  DEBUG_PRINT(p & FLAG_D ? "D": "-");
+  DEBUG_PRINT(p & FLAG_I ? "I": "-");
+  DEBUG_PRINT(p & FLAG_Z ? "Z": "-");
+  DEBUG_PRINT(p & FLAG_C ? "C": "-");
+  DEBUG_PRINT(",S:");DEBUG_PRINTLN(s,HEX);
 }
 int dump(){
   return debug;//pc.w >= 0xC8ED && pc.w <= 0xC927;
@@ -844,31 +871,31 @@ void loop(){
 		handle_interrupt(0xFFFE,pc,_p);
 	}
   if(dump()){
-        Serial.print("Address:");
-        Serial.print(pc.w,HEX);
+        DEBUG_PRINT("Address:");
+        DEBUG_PRINT(pc.w,HEX);
   }  
 
 	opcode = fetch_imm();
   if(dump()){
-        Serial.print(",Opcode:");
-        Serial.print(opcode,HEX);
-        Serial.print(" ");
-        Serial.print(OPERATORS[opcode].name);
-        Serial.print("\t ");
+        DEBUG_PRINT(",Opcode:");
+        DEBUG_PRINT(opcode,HEX);
+        DEBUG_PRINT(" ");
+        DEBUG_PRINT(OPERATORS[opcode].name);
+        DEBUG_PRINT("\t ");
   }
         if (OPERATORS[opcode].opr == op_unknown){
-          Serial.print("*** UNKNOWN OPCODE ***");
-          Serial.print(opcode,HEX);
-          Serial.print(" ");
-          Serial.println(pc.w-1,HEX);
+          DEBUG_PRINT("*** UNKNOWN OPCODE ***");
+          DEBUG_PRINT(opcode,HEX);
+          DEBUG_PRINT(" ");
+          DEBUG_PRINTLN(pc.w-1,HEX);
           while (1) {}
         }
 	OPERATORS[opcode].opr();
 
   if(dump()){
-        Serial.print("MEM:");
-        Serial.print(loram[0x10],HEX);
-        Serial.print(" ");
+        DEBUG_PRINT("MEM:");
+        DEBUG_PRINT(loram[0x10],HEX);
+        DEBUG_PRINT(" ");
         do_dump();
         //delay(50);
   }
@@ -880,9 +907,25 @@ void setup(){
     //ADDRH_DIR = 0xFF;
     //DDRD = 0x20;
     Serial.begin(9600);
+
+  tft.reset();
+  uint16_t identifier = tft.readID();
+  tft.begin(identifier);
+
+  tft.setRotation(1);
+  tft.fillScreen(BLACK);
+  tft.fillScreen(BLACK);
+  tft.fillScreen(BLACK);
+
+  tft.setCursor(0, 0);
+  tft.setTextColor(WHITE);
+  tft.setTextSize(1);
+
+
+
     for (int i=0;i<4096;loram[i++]=0);
     reset();
-    Serial.println("Setup done, running....");
+    DEBUG_PRINTLN("Setup done, running....");
     debug = 0;
 }
 
