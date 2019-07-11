@@ -1,6 +1,6 @@
-arduino6502
+avr6502
 ============
 
-6502 emulation for Arduino Mega 2560
+6502 emulation for AVR644p
 
 It includes a copy of EHBasic ROM
